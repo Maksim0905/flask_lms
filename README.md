@@ -33,7 +33,7 @@ python app.py
 
 ### Клиент (Студент)
 ```bash
-python client.py
+python client.py --new
 ```
 
 ## Конфигурация
