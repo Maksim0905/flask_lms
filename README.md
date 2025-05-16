@@ -22,7 +22,7 @@
    ```bash
    pip install -r requirements.txt
    ```
-3. Убедитесь, что у вас установлен [FFmpeg]([https://ffmpeg.org/download.html](https://storage.yandexcloud.net/ffmpeg-lms/ffmpeg%20ffplay.zip)) и он доступен в переменной окружения PATH.
+3. Убедитесь, что у вас установлен [FFmpeg](https://storage.yandexcloud.net/ffmpeg-lms/ffmpeg%20ffplay.zip) и он доступен в переменной окружения PATH.
 
 ## Запуск
 ### Сервер (Учитель)
