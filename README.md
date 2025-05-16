@@ -60,5 +60,3 @@ python client.py --new
 └── teacher_student.db  # База данных SQLite
 ```
 
-## Лицензия
-[MIT](LICENSE) 
