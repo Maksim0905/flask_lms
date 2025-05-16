@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Просмотр экрана студента</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #3a86ff;
+            --secondary: #8338ec;
+            --success: #38b000;
+            --warning: #ffbe0b;
+            --danger: #ff006e;
+            --dark: #212529;
+            --light: #f8f9fa;
+            --gray: #6c757d;
+            --border-radius: 8px;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            color: var(--dark);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr;
+            grid-template-rows: auto;
+            gap: 20px;
+        }
+
+        @media (min-width: 992px) {
+            .dashboard {
+                grid-template-columns: 2fr 1fr;
+            }
+        }
+
+        .card {
+            background-color: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            padding: 20px;
+            transition: var(--transition);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--dark);
+            margin: 0;
+        }
+
+        .stream-container {
+            position: relative;
+            background-color: #000;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            aspect-ratio: 16/9;
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            display: block;
+            object-fit: contain;
+        }
+
+        .stream-overlay {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 10;
+        }
+
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: white;
+        }
+
+        .status-connecting {
+            background-color: var(--warning);
+        }
+
+        .status-connected {
+            background-color: var(--success);
+        }
+
+        .status-error {
+            background-color: var(--danger);
+        }
+
+        .command-form {
+            margin-top: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px 15px;
+            font-size: 16px;
+            border-radius: var(--border-radius);
+            border: 1px solid #ddd;
+            transition: var(--transition);
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(58, 134, 255, 0.2);
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            font-size: 16px;
+            font-weight: 500;
+            text-align: center;
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: var(--transition);
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        .btn:active {
+            transform: translateY(1px);
+        }
+
+        .btn-secondary {
+            background-color: var(--gray);
+        }
+
+        .btn-success {
+            background-color: var(--success);
+        }
+
+        .btn-danger {
+            background-color: var(--danger);
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 14px;
+        }
+
+        .command-result {
+            background-color: #f8f9fa;
+            border-radius: var(--border-radius);
+            padding: 15px;
+            margin-top: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Consolas', monospace;
+            white-space: pre-wrap;
+            line-height: 1.4;
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 15px;
+        }
+
+        .tab {
+            padding: 10px 15px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .tab.active {
+            border-bottom: 2px solid var(--primary);
+            font-weight: 500;
+            color: var(--primary);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .notification-form {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .notification-form .form-control {
+            flex-grow: 1;
+        }
+
+        .notification-history {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .notification-item {
+            padding: 10px;
+            border-radius: var(--border-radius);
+            background-color: #f8f9fa;
+            margin-bottom: 10px;
+            border-left: 4px solid var(--primary);
+        }
+
+        .notification-time {
+            font-size: 12px;
+            color: var(--gray);
+            margin-bottom: 5px;
+        }
+
+        .navigation {
+            margin-top: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .pulse {
+            animation: pulse 1.5s infinite;
+        }
+
+        /* Диагностическая секция */
+        .diagnostic-section {
+            margin-top: 20px;
+        }
+
+        .diagnostic-info {
+            font-family: 'Consolas', monospace;
+            white-space: pre-wrap;
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: var(--border-radius);
+            font-size: 14px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            font-size: 12px;
+            font-weight: 500;
+            border-radius: 12px;
+            margin-left: 10px;
+        }
+
+        .badge-primary { background-color: var(--primary); color: white; }
+        .badge-success { background-color: var(--success); color: white; }
+        .badge-warning { background-color: var(--warning); color: black; }
+        .badge-danger { background-color: var(--danger); color: white; }
+
+        /* Стили для таблицы процессов */
+        .process-toolbar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .process-toolbar .form-control {
+            max-width: 300px;
+        }
+        
+        .process-table-container {
+            overflow-x: auto;
+            margin-bottom: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .process-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .process-table th, .process-table td {
+            padding: 8px 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .process-table th {
+            background-color: #f5f5f5;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        .process-table tbody tr:hover {
+            background-color: #f0f7ff;
+        }
+        
+        .process-row {
+            transition: background-color 0.2s;
+        }
+        
+        .process-row.highlight {
+            background-color: #e6f7ff;
+        }
+        
+        .empty-processes {
+            text-align: center;
+            padding: 40px 0;
+            color: var(--gray);
+        }
+        
+        .empty-processes i {
+            font-size: 48px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+        
+        .process-actions {
+            display: flex;
+            gap: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card-header">
+            <h1>Просмотр экрана студента <span class="badge badge-primary">ID: {{ client_id[:8] }}</span></h1>
+            <a href="/" class="back-link"><i class="fas fa-arrow-left"></i> К списку клиентов</a>
+        </div>
+
+        <div class="dashboard">
+            <!-- Левая колонка -->
+            <div class="main-content">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Трансляция экрана</h2>
+                        <div id="stream-status" class="status-badge status-connecting">
+                            <i class="fas fa-circle-notch fa-spin"></i>
+                            <span>Подключение...</span>
+                        </div>
+                    </div>
+                    <div class="stream-container">
+                        <video id="video" controls autoplay muted></video>
+                    </div>
+                </div>
+
+                <div class="card command-form">
+                    <div class="card-header">
+                        <h2 class="card-title">Управление</h2>
+                    </div>
+                    <div class="tabs">
+                        <div class="tab active" data-tab="commands">Команды</div>
+                        <div class="tab" data-tab="notifications">Уведомления</div>
+                        <div class="tab" data-tab="processes">Процессы</div>
+                        <div class="tab" data-tab="diagnostic">Диагностика</div>
+                    </div>
+
+                    <div class="tab-content active" id="commands-tab">
+                        <form id="command-form">
+                            <input type="hidden" id="client-id" value="{{ client_id }}">
+                            <div class="form-group">
+                                <input type="text" id="command" name="command" placeholder="Введите команду для выполнения" class="form-control" required>
+                            </div>
+                            <button type="submit" class="btn"><i class="fas fa-terminal"></i> Выполнить</button>
+                        </form>
+                        <div id="command-result" class="command-result">Результат выполнения команды будет отображен здесь</div>
+                    </div>
+
+                    <div class="tab-content" id="notifications-tab">
+                        <div class="form-group">
+                            <form id="notification-form" class="notification-form">
+                                <input type="text" id="notification-text" placeholder="Текст уведомления" class="form-control" required>
+                                <button type="submit" class="btn btn-success"><i class="fas fa-bell"></i> Отправить</button>
+                            </form>
+                        </div>
+                        <h3>История уведомлений</h3>
+                        <div id="notification-history" class="notification-history"></div>
+                    </div>
+
+                    <div class="tab-content" id="processes-tab">
+                        <div class="form-group">
+                            <div class="process-toolbar">
+                                <button class="btn btn-primary" id="refresh-processes"><i class="fas fa-sync-alt"></i> Обновить</button>
+                                <input type="text" id="process-filter" placeholder="Фильтр процессов" class="form-control">
+                                <div class="process-status status-badge status-connecting" id="process-status">
+                                    <i class="fas fa-circle-notch fa-spin"></i> <span>Загрузка процессов...</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="process-table-container">
+                            <table class="process-table">
+                                <thead>
+                                    <tr>
+                                        <th>PID</th>
+                                        <th>Имя процесса</th>
+                                        <th>Память</th>
+                                        <th>Название окна</th>
+                                        <th>Действия</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="processes-list">
+                                    <!-- Список процессов будет загружен сюда -->
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="empty-processes" style="display:none">
+                            <i class="fas fa-tasks"></i>
+                            <p>Нет запущенных процессов или произошла ошибка загрузки</p>
+                        </div>
+                    </div>
+
+                    <div class="tab-content" id="diagnostic-tab">
+                        <div class="form-group">
+                            <button class="btn btn-secondary" onclick="refreshDiagnostic()"><i class="fas fa-sync-alt"></i> Обновить данные</button>
+                        </div>
+                        <div id="diagnostic-info" class="diagnostic-info">Загрузка диагностических данных...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Правая колонка -->
+            <div class="sidebar">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Быстрые команды</h2>
+                    </div>
+                    <div class="quick-commands">
+                        <button class="btn btn-sm" onclick="runQuickCommand('dir')"><i class="fas fa-folder"></i> Список файлов</button>
+                        <button class="btn btn-sm" onclick="runQuickCommand('systeminfo')"><i class="fas fa-info-circle"></i> Системная информация</button>
+                        <button class="btn btn-sm" onclick="runQuickCommand('tasklist')"><i class="fas fa-list"></i> Активные процессы</button>
+                        <button class="btn btn-sm" onclick="runQuickCommand('ipconfig')"><i class="fas fa-network-wired"></i> Сетевые настройки</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Информация о клиенте</h2>
+                    </div>
+                    <div class="client-info">
+                        <p><strong>ID клиента:</strong> {{ client_id }}</p>
+                        <p><strong>Плейлист:</strong> {{ playlist_url }}</p>
+                        <p><strong>Статус:</strong> <span id="client-status">Активен</span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const clientId = document.getElementById('client-id').value;
+        const video = document.getElementById('video');
+        const streamStatus = document.getElementById('stream-status');
+        const commandResult = document.getElementById('command-result');
+        let hlsPlayer = null;
+        let retryCount = 0;
+        const MAX_RETRIES = 12;
+        const RETRY_INTERVAL = 5000;
+        let notificationHistory = [];
+        
+        // Инициализация HLS плеера
+        function initHls() {
+            streamStatus.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> <span>Подключение...</span>';
+            streamStatus.className = 'status-badge status-connecting';
+            
+            if (hlsPlayer) {
+                hlsPlayer.destroy();
+                hlsPlayer = null;
+            }
+            
+            // Проверяем поддержку HLS
+            if (Hls.isSupported()) {
+                hlsPlayer = new Hls({
+                    debug: false,
+                    enableWorker: true,
+                    lowLatencyMode: true,        // Режим низкой задержки
+                    liveSyncDuration: 0.3,       // Уменьшаем для уменьшения задержки (было 0.5)
+                    liveMaxLatencyDuration: 1,   // Уменьшаем максимальную задержку (было 2)
+                    liveDurationInfinity: true,  // Стрим бесконечный
+                    liveBackBufferLength: 0,     // Не сохраняем буфер назад
+                    levelLoadingTimeOut: 5000,   // Таймаут загрузки уровня в мс
+                    fragLoadingTimeOut: 5000,    // Таймаут загрузки фрагмента в мс
+                    startLevel: 0,               // Начинаем с нулевого уровня (самый низкий битрейт)
+                    maxBufferLength: 1,          // Максимальный размер буфера в секундах (было 2)
+                    maxMaxBufferLength: 2,       // Максимально допустимый буфер при смене уровня
+                    manifestLoadingMaxRetry: 6,  // Максимальное количество попыток загрузки манифеста (было 4)
+                    manifestLoadingRetryDelay: 300, // Уменьшаем задержку между попытками (было 500)
+                    startFragPrefetch: true,     // Предварительная загрузка первого фрагмента
+                    testBandwidth: true          // Тестирование пропускной способности
+                });
+                
+                const playlistUrl = `/hls/${clientId}/playlist.m3u8`;
+                
+
+                const cacheBusterUrl = `${playlistUrl}?_=${new Date().getTime()}`;
+                hlsPlayer.loadSource(cacheBusterUrl);
+                hlsPlayer.attachMedia(video);
+                
+                hlsPlayer.on(Hls.Events.MANIFEST_PARSED, function() {
+                    console.log('Манифест проанализирован, начинаю воспроизведение');
+                    video.muted = true;
+                    
+                    video.currentTime = video.duration;
+                    
+                    const playPromise = video.play();
+                    if (playPromise !== undefined) {
+                        playPromise
+                            .then(() => {
+                                console.log('Воспроизведение началось');
+                                streamStatus.innerHTML = '<i class="fas fa-broadcast-tower"></i> <span>Трансляция активна</span>';
+                                streamStatus.className = 'status-badge status-connected';
+                                
+                                if (window.hlsRefreshInterval) {
+                                    clearInterval(window.hlsRefreshInterval);
+                                }
+                                window.hlsRefreshInterval = setInterval(() => {
+                                    hlsPlayer.trigger(Hls.Events.LEVEL_LOADING, {
+                                        url: cacheBusterUrl
+                                    });
+                                }, 3000);
+                            })
+                            .catch(error => {
+                                console.error('Ошибка воспроизведения:', error);
+                                streamStatus.innerHTML = `<i class="fas fa-exclamation-triangle"></i> <span>Ошибка: ${error.message}</span>`;
+                                streamStatus.className = 'status-badge status-error';
+                            });
+                    }
+                });
+                
+                hlsPlayer.on(Hls.Events.FRAG_LOADED, function() {
+                    if (video.readyState === 4) { 
+                        if (video.buffered.length > 0) {
+                            const lastBufferedTime = video.buffered.end(video.buffered.length - 1);
+                            if (lastBufferedTime > video.currentTime + 0.5) {
+                                video.currentTime = lastBufferedTime - 0.1;
+                            }
+                        }
+                    }
+                });
+                
+                hlsPlayer.on(Hls.Events.ERROR, function(event, data) {
+                    if (data.fatal) {
+                        console.error('Фатальная ошибка HLS:', data.type, data.details);
+                        
+                        switch(data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR:
+                                console.log('Сетевая ошибка, пробую восстановить');
+                                hlsPlayer.startLoad();
+                                break;
+                            case Hls.ErrorTypes.MEDIA_ERROR:
+                                console.log('Ошибка медиа, пробую восстановить');
+                                hlsPlayer.recoverMediaError();
+                                break;
+                            default:
+                                retry();
+                                break;
+                        }
+                    } else {
+                        console.warn('Нефатальная ошибка HLS:', data.type, data.details);
+                    }
+                });
+                
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = `/hls/${clientId}/playlist.m3u8`;
+                video.addEventListener('loadedmetadata', function() {
+                    video.play();
+                    streamStatus.innerHTML = '<i class="fas fa-broadcast-tower"></i> <span>Трансляция активна</span>';
+                    streamStatus.className = 'status-badge status-connected';
+                });
+                
+                video.addEventListener('error', function(e) {
+                    console.error('Ошибка видео:', e);
+                    streamStatus.innerHTML = `<i class="fas fa-exclamation-triangle"></i> <span>Ошибка: ${video.error ? video.error.message : 'Неизвестная ошибка'}</span>`;
+                    streamStatus.className = 'status-badge status-error';
+                    retry();
+                });
+            } else {
+                streamStatus.innerHTML = '<i class="fas fa-exclamation-triangle"></i> <span>HLS не поддерживается в этом браузере</span>';
+                streamStatus.className = 'status-badge status-error';
+            }
+        }
+        
+        function retry() {
+            if (retryCount >= MAX_RETRIES) {
+                streamStatus.innerHTML = `<i class="fas fa-exclamation-triangle"></i> <span>Не удалось подключиться после ${MAX_RETRIES} попыток</span>`;
+                streamStatus.className = 'status-badge status-error';
+                return;
+            }
+            
+            retryCount++;
+            streamStatus.innerHTML = `<i class="fas fa-circle-notch fa-spin"></i> <span>Повторное подключение (${retryCount}/${MAX_RETRIES})...</span>`;
+            streamStatus.className = 'status-badge status-connecting';
+            
+            console.log(`Попытка повторного подключения ${retryCount}/${MAX_RETRIES} через ${RETRY_INTERVAL}ms`);
+            
+            setTimeout(initHls, RETRY_INTERVAL);
+        }
+        
+
+        initHls();
+        
+        function loadDiagnostic() {
+            fetch(`/diagnostic/${clientId}`)
+                .then(response => response.json())
+                .then(data => {
+                    const diagnosticInfo = document.getElementById('diagnostic-info');
+                    diagnosticInfo.innerHTML = JSON.stringify(data, null, 2)
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;');
+                })
+                .catch(error => {
+                    document.getElementById('diagnostic-info').textContent = 
+                        `Ошибка получения диагностической информации: ${error}`;
+                });
+        }
+        
+        function refreshDiagnostic() {
+            document.getElementById('diagnostic-info').textContent = 'Обновление данных...';
+            loadDiagnostic();
+        }
+        
+        document.getElementById('command-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const command = document.getElementById('command').value;
+            commandResult.textContent = 'Выполнение команды...';
+            
+            fetch(`/send-command/${clientId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `command=${encodeURIComponent(command)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    commandResult.innerHTML = '<div class="status-badge status-connecting">Команда отправлена, ожидание результата...</div>';
+                    
+                    checkCommandResult(data.command_id);
+                } else {
+                    commandResult.innerHTML = `<div class="status-badge status-error">Ошибка: ${data.error}</div>`;
+                }
+            })
+            .catch(error => {
+                commandResult.innerHTML = `<div class="status-badge status-error">Ошибка отправки команды: ${error}</div>`;
+            });
+        });
+        
+        function checkCommandResult(commandId) {
+            fetch(`/api/command-details/${clientId}/${commandId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.command && data.command.status === 'completed') {
+                        let resultHtml = '';
+                        if (data.command.stdout) {
+                            resultHtml += `<pre>${data.command.stdout}</pre>`;
+                        }
+                        if (data.command.stderr) {
+                            resultHtml += `<pre class="text-danger">${data.command.stderr}</pre>`;
+                        }
+                        resultHtml += `<div class="status-badge status-connected">Код возврата: ${data.command.exit_code}</div>`;
+                        
+                        commandResult.innerHTML = resultHtml;
+                    } else {
+                        commandResult.innerHTML = '<div class="status-badge status-connecting">Ожидание результата...</div>';
+                        setTimeout(() => checkCommandResult(commandId), 1000);
+                    }
+                })
+                .catch(error => {
+                    commandResult.innerHTML = `<div class="status-badge status-error">Ошибка получения результата: ${error}</div>`;
+                });
+        }
+
+        document.getElementById('notification-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const notificationText = document.getElementById('notification-text').value;
+            if (!notificationText.trim()) return;
+            
+            addNotificationToHistory(notificationText);
+            
+            const statusElement = document.createElement('div');
+            statusElement.className = 'status-badge status-connecting';
+            statusElement.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> <span>Отправка уведомления...</span>';
+            document.getElementById('notification-form').appendChild(statusElement);
+            
+            fetch(`/api/send-notification/${clientId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ message: notificationText })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('notification-text').value = '';
+                    statusElement.className = 'status-badge status-connected';
+                    statusElement.innerHTML = '<i class="fas fa-check"></i> <span>Уведомление отправлено</span>';
+                    
+                    setTimeout(() => {
+                        statusElement.remove();
+                    }, 3000);
+                } else {
+                    statusElement.className = 'status-badge status-error';
+                    statusElement.innerHTML = `<i class="fas fa-exclamation-triangle"></i> <span>Ошибка: ${data.error || 'Неизвестная ошибка'}</span>`;
+                    
+                    setTimeout(() => {
+                        statusElement.remove();
+                    }, 5000);
+                }
+            })
+            .catch(error => {
+                statusElement.className = 'status-badge status-error';
+                statusElement.innerHTML = `<i class="fas fa-exclamation-triangle"></i> <span>Ошибка отправки уведомления: ${error}</span>`;
+                
+                setTimeout(() => {
+                    statusElement.remove();
+                }, 5000);
+            });
+        });
+        
+        function addNotificationToHistory(text) {
+            const now = new Date();
+            const notification = {
+                text: text,
+                time: now.toLocaleTimeString(),
+                date: now.toLocaleDateString()
+            };
+            
+            notificationHistory.unshift(notification);
+            
+            if (notificationHistory.length > 20) {
+                notificationHistory = notificationHistory.slice(0, 20);
+            }
+            
+            updateNotificationHistory();
+        }
+        
+        function updateNotificationHistory() {
+            const historyContainer = document.getElementById('notification-history');
+            historyContainer.innerHTML = '';
+            
+            if (notificationHistory.length === 0) {
+                historyContainer.innerHTML = '<p>История уведомлений пуста</p>';
+                return;
+            }
+            
+            notificationHistory.forEach(notification => {
+                const item = document.createElement('div');
+                item.className = 'notification-item';
+                item.innerHTML = `
+                    <div class="notification-time">${notification.date} ${notification.time}</div>
+                    <div class="notification-text">${notification.text}</div>
+                `;
+                historyContainer.appendChild(item);
+            });
+        }
+        
+        function runQuickCommand(command) {
+            document.getElementById('command').value = command;
+            document.getElementById('command-form').dispatchEvent(new Event('submit'));
+        }
+
+
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                
+                this.classList.add('active');
+                
+                const tabId = this.getAttribute('data-tab');
+                document.getElementById(`${tabId}-tab`).classList.add('active');
+                
+                if (tabId === 'diagnostic') {
+                    loadDiagnostic();
+                } else if (tabId === 'processes') {
+                    loadProcesses();
+                }
+            });
+        });
+
+        document.addEventListener('visibilitychange', function() {
+            if (document.visibilityState === 'visible') {
+                console.log('Вкладка активна, восстанавливаем соединение');
+                initHls();
+            }
+        });
+        
+        updateNotificationHistory();
+
+        const processTabContent = document.getElementById('processes-tab');
+        const refreshProcessesButton = document.getElementById('refresh-processes');
+        const processFilter = document.getElementById('process-filter');
+        const processesList = document.getElementById('processes-list');
+        const processStatus = document.getElementById('process-status');
+        const emptyProcesses = document.querySelector('.empty-processes');
+        
+        function loadProcesses() {
+            processStatus.className = 'process-status status-badge status-connecting';
+            processStatus.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> <span>Загрузка процессов...</span>';
+            emptyProcesses.style.display = 'none';
+            
+            processesList.innerHTML = '<tr><td colspan="5" class="text-center">Загрузка данных...</td></tr>';
+            
+            fetch(`/api/get-processes/${clientId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.command_id) {
+                        checkProcessCommandResult(data.command_id);
+                    } else {
+                        showProcessError('Ошибка запроса списка процессов');
+                    }
+                })
+                .catch(error => {
+                    showProcessError(`Ошибка: ${error}`);
+                });
+        }
+        
+        function checkProcessCommandResult(commandId) {
+            fetch(`/api/command-details/${clientId}/${commandId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.command && data.command.status === 'completed') {
+                        if (data.command.exit_code === 0 && data.command.stdout) {
+                            parseProcessList(data.command.stdout);
+                            processStatus.className = 'process-status status-badge status-connected';
+                            processStatus.innerHTML = '<i class="fas fa-check"></i> <span>Список загружен</span>';
+                        } else {
+                            showProcessError(`Ошибка выполнения: ${data.command.stderr || 'неизвестная ошибка'}`);
+                        }
+                    } else {
+                        setTimeout(() => checkProcessCommandResult(commandId), 1000);
+                    }
+                })
+                .catch(error => {
+                    showProcessError(`Ошибка получения результатов: ${error}`);
+                });
+        }
+        
+        function showProcessError(message) {
+            processStatus.className = 'process-status status-badge status-error';
+            processStatus.innerHTML = `<i class="fas fa-exclamation-triangle"></i> <span>${message}</span>`;
+            processesList.innerHTML = '';
+            emptyProcesses.style.display = 'block';
+        }
+        
+        function parseProcessList(csvData) {
+            processesList.innerHTML = '';
+            
+            try {
+                const lines = csvData.trim().split('\n');
+                
+                if (lines.length <= 1) {
+                    showProcessError('Нет запущенных процессов');
+                    return;
+                }
+                
+                for (let i = 1; i < lines.length; i++) {
+                    const line = lines[i];
+                    
+                    let values = [];
+                    let inQuotes = false;
+                    let currentValue = '';
+                    
+                    for (let j = 0; j < line.length; j++) {
+                        const char = line[j];
+                        if (char === '"') {
+                            inQuotes = !inQuotes;
+                        } else if (char === ',' && !inQuotes) {
+                            values.push(currentValue);
+                            currentValue = '';
+                        } else {
+                            currentValue += char;
+                        }
+                    }
+                    
+                    values.push(currentValue);
+                    
+                    if (values.length >= 5) {
+                        const processName = values[0].replace(/"/g, '');
+                        const pid = values[1].replace(/"/g, '');
+                        const memory = values.length > 4 ? values[4].replace(/"/g, '') : 'Н/Д';
+                        const windowTitle = values.length > 8 ? values[8].replace(/"/g, '') : '';
+                        
+                        const tr = document.createElement('tr');
+                        tr.className = 'process-row';
+                        tr.dataset.pid = pid;
+                        tr.dataset.name = processName.toLowerCase();
+                        tr.dataset.title = windowTitle.toLowerCase();
+                        
+                        tr.innerHTML = `
+                            <td>${pid}</td>
+                            <td title="${processName}">${processName}</td>
+                            <td>${memory}</td>
+                            <td title="${windowTitle}">${windowTitle}</td>
+                            <td>
+                                <div class="process-actions">
+                                    <button class="btn btn-danger btn-sm kill-process" data-pid="${pid}">
+                                        <i class="fas fa-times"></i> Завершить
+                                    </button>
+                                </div>
+                            </td>
+                        `;
+                        
+                        processesList.appendChild(tr);
+                    }
+                }
+                
+                document.querySelectorAll('.kill-process').forEach(button => {
+                    button.addEventListener('click', function() {
+                        const pid = this.dataset.pid;
+                        killProcess(pid);
+                    });
+                });
+                
+                if (processesList.children.length === 0) {
+                    emptyProcesses.style.display = 'block';
+                } else {
+                    emptyProcesses.style.display = 'none';
+                }
+                
+                applyProcessFilter();
+                
+            } catch (error) {
+                console.error('Ошибка парсинга CSV:', error);
+                showProcessError(`Ошибка парсинга данных: ${error.message}`);
+            }
+        }
+        
+        function killProcess(pid) {
+            const row = document.querySelector(`.process-row[data-pid="${pid}"]`);
+            
+            if (row) {
+                row.classList.add('highlight');
+                
+                const actionCell = row.querySelector('.process-actions');
+                const originalContent = actionCell.innerHTML;
+                actionCell.innerHTML = '<div class="status-badge status-connecting"><i class="fas fa-circle-notch fa-spin"></i> Завершение...</div>';
+                
+                fetch(`/api/kill-process/${clientId}/${pid}`, {
+                    method: 'POST'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.command_id) {
+                        checkKillProcessResult(data.command_id, pid, row, actionCell, originalContent);
+                    } else {
+                        actionCell.innerHTML = '<div class="status-badge status-error"><i class="fas fa-exclamation-triangle"></i> Ошибка</div>';
+                        setTimeout(() => {
+                            actionCell.innerHTML = originalContent;
+                            row.classList.remove('highlight');
+                        }, 3000);
+                    }
+                })
+                .catch(error => {
+                    actionCell.innerHTML = `<div class="status-badge status-error"><i class="fas fa-exclamation-triangle"></i> Ошибка: ${error}</div>`;
+                    setTimeout(() => {
+                        actionCell.innerHTML = originalContent;
+                        row.classList.remove('highlight');
+                    }, 3000);
+                });
+            }
+        }
+        
+        function checkKillProcessResult(commandId, pid, row, actionCell, originalContent) {
+            fetch(`/api/command-details/${clientId}/${commandId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.command && data.command.status === 'completed') {
+                        if (data.command.exit_code === 0) {
+                            actionCell.innerHTML = '<div class="status-badge status-connected"><i class="fas fa-check"></i> Завершен</div>';
+                            setTimeout(() => {
+                                row.style.opacity = '0.5';
+                                row.style.textDecoration = 'line-through';
+                            }, 1000);
+                        } else {
+                            actionCell.innerHTML = `<div class="status-badge status-error"><i class="fas fa-exclamation-triangle"></i> Ошибка: ${data.command.stderr || 'Процесс не завершен'}</div>`;
+                            setTimeout(() => {
+                                actionCell.innerHTML = originalContent;
+                                row.classList.remove('highlight');
+                            }, 3000);
+                        }
+                    } else {
+                        setTimeout(() => checkKillProcessResult(commandId, pid, row, actionCell, originalContent), 1000);
+                    }
+                })
+                .catch(error => {
+                    actionCell.innerHTML = `<div class="status-badge status-error"><i class="fas fa-exclamation-triangle"></i> Ошибка: ${error}</div>`;
+                    setTimeout(() => {
+                        actionCell.innerHTML = originalContent;
+                        row.classList.remove('highlight');
+                    }, 3000);
+                });
+        }
+        
+        function applyProcessFilter() {
+            const filterText = processFilter.value.toLowerCase().trim();
+            
+            document.querySelectorAll('.process-row').forEach(row => {
+                const processName = row.dataset.name;
+                const windowTitle = row.dataset.title;
+                const pid = row.dataset.pid;
+                
+                if (!filterText || 
+                    processName.includes(filterText) || 
+                    windowTitle.includes(filterText) || 
+                    pid.includes(filterText)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+            
+            const hasVisibleRows = Array.from(document.querySelectorAll('.process-row'))
+                .some(row => row.style.display !== 'none');
+            
+            if (!hasVisibleRows && processesList.children.length > 0) {
+                emptyProcesses.style.display = 'block';
+                emptyProcesses.querySelector('p').textContent = 'Нет процессов, соответствующих фильтру';
+            } else if (processesList.children.length === 0) {
+                emptyProcesses.style.display = 'block';
+                emptyProcesses.querySelector('p').textContent = 'Нет запущенных процессов или произошла ошибка загрузки';
+            } else {
+                emptyProcesses.style.display = 'none';
+            }
+        }
+        
+        refreshProcessesButton.addEventListener('click', loadProcesses);
+        processFilter.addEventListener('input', applyProcessFilter);
+    </script>
+</body>
+</html> 

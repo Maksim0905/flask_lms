@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Панель управления</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #3a86ff;
+            --secondary: #8338ec;
+            --success: #38b000;
+            --warning: #ffbe0b;
+            --danger: #ff006e;
+            --dark: #212529;
+            --light: #f8f9fa;
+            --gray: #6c757d;
+            --border-radius: 8px;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            color: var(--dark);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            color: var(--dark);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .card {
+            background-color: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            padding: 20px;
+            transition: var(--transition);
+            margin-bottom: 20px;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--dark);
+            margin: 0;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            font-size: 16px;
+            font-weight: 500;
+            text-align: center;
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: var(--transition);
+            background-color: var(--primary);
+            color: white;
+            text-decoration: none;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        .btn:active {
+            transform: translateY(1px);
+        }
+
+        .btn-secondary {
+            background-color: var(--gray);
+        }
+
+        .btn-danger {
+            background-color: var(--danger);
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 14px;
+        }
+
+        .client-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .client-card {
+            background-color: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            padding: 20px;
+            transition: var(--transition);
+            border-left: 4px solid var(--primary);
+            position: relative;
+        }
+
+        .client-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .client-card.inactive {
+            border-left-color: var(--gray);
+            opacity: 0.7;
+        }
+
+        .client-card.streaming {
+            border-left-color: var(--success);
+        }
+
+        .client-info {
+            margin-bottom: 15px;
+        }
+
+        .client-id {
+            font-weight: 600;
+            margin-bottom: 5px;
+            font-size: 16px;
+            color: var(--dark);
+            word-break: break-all;
+        }
+
+        .client-status {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: var(--success);
+            display: inline-block;
+        }
+
+        .status-indicator.inactive {
+            background-color: var(--gray);
+        }
+
+        .last-seen {
+            font-size: 12px;
+            color: var(--gray);
+            margin-top: 3px;
+        }
+
+        .client-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            font-size: 12px;
+            font-weight: 500;
+            border-radius: 12px;
+            margin-right: 5px;
+        }
+
+        .badge-primary { background-color: var(--primary); color: white; }
+        .badge-success { background-color: var(--success); color: white; }
+        .badge-warning { background-color: var(--warning); color: black; }
+
+        .client-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--gray);
+            margin-bottom: 15px;
+        }
+
+        .client-stream-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: var(--success);
+            color: white;
+            padding: 3px 8px;
+            font-size: 12px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 50px 0;
+            color: var(--gray);
+        }
+
+        .empty-state i {
+            font-size: 48px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .empty-state p {
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .client-list {
+                grid-template-columns: 1fr;
+            }
+
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .header-actions {
+                width: 100%;
+            }
+
+            .btn {
+                width: 100%;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Система мониторинга студентов</h1>
+            <div class="header-actions">
+                <a href="/logout" class="btn btn-secondary"><i class="fas fa-sign-out-alt"></i> Выйти</a>
+                <button class="btn btn-primary" onclick="refreshClients()"><i class="fas fa-sync-alt"></i> Обновить</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title"><i class="fas fa-laptop"></i> Подключенные клиенты</h2>
+                <span id="client-count" class="badge badge-primary">{{ clients|length }} активных</span>
+            </div>
+
+            {% if clients %}
+            <div class="client-list">
+                {% for client in clients %}
+                <div class="client-card {% if client.has_stream %}streaming{% endif %}">
+                    {% if client.has_stream %}
+                    <div class="client-stream-badge">
+                        <i class="fas fa-video"></i> Стрим активен
+                    </div>
+                    {% endif %}
+                    
+                    <div class="client-info">
+                        <div class="client-id">{{ client.client_id }}</div>
+                        <div class="client-status">
+                            <span class="status-indicator {% if not client.last_seen %}inactive{% endif %}"></span>
+                            {{ "Активен" if client.last_seen else "Неактивен" }}
+                        </div>
+                        <div class="last-seen">
+                            Последняя активность: {{ client.last_seen.strftime('%d.%m.%Y %H:%M:%S') if client.last_seen else "Н/Д" }}
+                        </div>
+                    </div>
+                    
+                    <div class="client-meta">
+                        {% if client.system_info %}
+                        <span>
+                            <i class="fas fa-desktop"></i> {{ client.system_info.get('os', 'Н/Д') }}
+                        </span>
+                        <span>
+                            <i class="fas fa-microchip"></i> CPU: {{ client.system_info.get('cpu_percent', 'Н/Д') }}%
+                        </span>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="client-actions">
+                        <a href="/stream/{{ client.client_id }}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-tv"></i> Просмотр
+                        </a>
+                        <a href="/view/{{ client.client_id }}" class="btn btn-secondary btn-sm">
+                            <i class="fas fa-terminal"></i> Команды
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-laptop-code"></i>
+                <p>Нет активных клиентов</p>
+                <p>Запустите клиентское приложение или дождитесь подключения студентов</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+        function refreshClients() {
+            window.location.reload();
+        }
+        
+        setInterval(refreshClients, 30000);
+    </script>
+</body>
+</html> 
