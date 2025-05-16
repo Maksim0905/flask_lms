@@ -1,0 +1,6 @@
+Flask
+requests
+werkzeug
+pillow
+psutil
+win10toast 
