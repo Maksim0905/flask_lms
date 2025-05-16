@@ -16,7 +16,7 @@
 1. Клонируйте репозиторий:
    ```bash
    git clone https://github.com/Maksim0905/flask_lms.git
-   cd teacher-student-system
+   cd flask_lms
    ```
 2. Установите зависимости:
    ```bash
