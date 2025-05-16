@@ -15,7 +15,7 @@
 ## Установка
 1. Клонируйте репозиторий:
    ```bash
-   git clone https://github.com/yourusername/teacher-student-system.git
+   git clone https://github.com/Maksim0905/flask_lms.git
    cd teacher-student-system
    ```
 2. Установите зависимости:
