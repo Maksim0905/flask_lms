@@ -60,3 +60,6 @@ python client.py --new
 └── teacher_student.db  # База данных SQLite
 ```
 
+## Демонстрация
+
+[![Смотреть видео](assets/video-preview.png)](https://rutube.ru/video/b3d407528982c8547118d6d655f7b355/)
